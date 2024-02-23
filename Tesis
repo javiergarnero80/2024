@@ -1,0 +1,83 @@
+import pandas as pd
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+from tqdm import tqdm
+import os
+
+geolocator = Nominatim(user_agent="my_app", timeout=None)
+
+def obtener_longitud_latitud(direccion):
+    try:
+        location = geolocator.geocode(direccion, timeout=10)
+        if location:
+            return location.latitude, location.longitude
+    except (GeocoderTimedOut, GeocoderServiceError) as e:
+        print(f"Error de geocodificación para la dirección '{direccion}': {str(e)}")
+    
+    return None, None
+
+def geocodificar_dataframe(df):
+    # Crear una barra de progreso
+    total_rows = len(df)
+    progress_bar = tqdm(total=total_rows, desc="Geocodificación", unit="row")
+
+    # Agregar las columnas "Latitude" y "Longitude" al DataFrame
+    df["Latitude"] = None
+    df["Longitude"] = None
+
+    # Iterar sobre las filas del DataFrame
+    for index, row in df.iterrows():
+        provincia = row["Provincia"]
+        departamento = row["Departamento"]
+        localidad = row["Localidad"]
+        pais = row["País"]
+
+        # Construir la dirección utilizando los datos de provincia, departamento, localidad y país
+        direccion = f"{localidad}, {departamento}, {provincia}, {pais}"
+
+        # Obtener latitud y longitud para la dirección
+        latitud, longitud = obtener_longitud_latitud(direccion)
+
+        # Actualizar los valores en el DataFrame si se obtuvieron las coordenadas
+        if latitud and longitud:
+            df.at[index, "Latitude"] = latitud
+            df.at[index, "Longitude"] = longitud
+
+        # Actualizar la barra de progreso
+        progress_bar.update(1)
+
+    # Cerrar la barra de progreso
+    progress_bar.close()
+
+    return df
+
+def generar_nombre_archivo_versionado(output_dir, base_filename):
+    version = 1
+    output_file = os.path.join(output_dir, f"{base_filename}_v{version}.csv")
+    while os.path.exists(output_file):
+        version += 1
+        output_file = os.path.join(output_dir, f"{base_filename}_v{version}.csv")
+    
+    return output_file
+
+def main():
+    # Leer el archivo CSV
+    input_file = "/home/jlinux/Desktop/Powerbi-main/Table1.csv"
+    df = pd.read_csv(input_file, sep=",", encoding='utf-8')
+
+    # Geocodificar el DataFrame
+    df = geocodificar_dataframe(df)
+
+    # Agregar una columna "LocationID" como identificador único
+    df.insert(0, "LocationID", range(1, len(df) + 1))
+
+    # Generar un nombre de archivo CSV versionado
+    output_dir = "/home/jlinux/Desktop/Powerbi-main"
+    output_file = generar_nombre_archivo_versionado(output_dir, "salida_coordenadas_localidad_pais")
+
+    # Guardar el DataFrame actualizado en el archivo CSV versionado
+    df.to_csv(output_file, index=False)
+    print(f"El archivo CSV se ha guardado en: {output_file}")
+
+if __name__ == "__main__":
+    main()
