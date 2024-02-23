@@ -1,4 +1,5 @@
 import pandas as pd
+import folium
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from tqdm import tqdm
@@ -60,6 +61,22 @@ def generar_nombre_archivo_versionado(output_dir, base_filename):
     
     return output_file
 
+def generar_mapa(df):
+    mapa = folium.Map()
+
+    # Agregar marcadores al mapa
+    for index, row in df.iterrows():
+        latitud = row["Latitude"]
+        longitud = row["Longitude"]
+        folium.Marker([latitud, longitud]).add_to(mapa)
+
+    # Guardar el mapa como archivo HTML
+    output_dir = "/home/jlinux/Desktop/Powerbi-main"
+    output_file = os.path.join(output_dir, "mapa.html")
+    mapa.save(output_file)
+
+    print(f"El mapa se ha guardado en: {output_file}")
+
 def main():
     # Leer el archivo CSV
     input_file = "/home/jlinux/Desktop/Powerbi-main/Table1.csv"
@@ -68,16 +85,20 @@ def main():
     # Geocodificar el DataFrame
     df = geocodificar_dataframe(df)
 
-    # Agregar una columna "LocationID" como identificador único
-    df.insert(0, "LocationID", range(1, len(df) + 1))
+    # Eliminar columnas innecesarias
+    df = df.drop(columns=["Provincia", "Departamento", "Localidad", "País"])
 
     # Generar un nombre de archivo CSV versionado
     output_dir = "/home/jlinux/Desktop/Powerbi-main"
     output_file = generar_nombre_archivo_versionado(output_dir, "salida_coordenadas_localidad_pais")
 
     # Guardar el DataFrame actualizado en el archivo CSV versionado
-    df.to_csv(output_file, index=False)
+    df.to_csv(output_file, index=False, header=True)
+
     print(f"El archivo CSV se ha guardado en: {output_file}")
+
+    # Generar el mapa
+    generar_mapa(df)
 
 if __name__ == "__main__":
     main()
