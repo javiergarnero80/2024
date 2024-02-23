@@ -4,6 +4,8 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from tqdm import tqdm
 import os
+import tkinter as tk
+from tkinter import filedialog
 
 geolocator = Nominatim(user_agent="my_app", timeout=None)
 
@@ -28,13 +30,7 @@ def geocodificar_dataframe(df):
 
     # Iterar sobre las filas del DataFrame
     for index, row in df.iterrows():
-        provincia = row["Provincia"]
-        departamento = row["Departamento"]
-        localidad = row["Localidad"]
-        pais = row["País"]
-
-        # Construir la dirección utilizando los datos de provincia, departamento, localidad y país
-        direccion = f"{localidad}, {departamento}, {provincia}, {pais}"
+        direccion = f"{row['Localidad']}, {row['Departamento']}, {row['Provincia']}, {row['País']}"
 
         # Obtener latitud y longitud para la dirección
         latitud, longitud = obtener_longitud_latitud(direccion)
@@ -65,7 +61,7 @@ def generar_mapa(df):
     mapa = folium.Map()
 
     # Agregar marcadores al mapa
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
         latitud = row["Latitude"]
         longitud = row["Longitude"]
         folium.Marker([latitud, longitud]).add_to(mapa)
@@ -77,9 +73,16 @@ def generar_mapa(df):
 
     print(f"El mapa se ha guardado en: {output_file}")
 
+def cargar_archivo():
+    root = tk.Tk()
+    root.withdraw()
+    
+    file_path = filedialog.askopenfilename()
+    return file_path
+
 def main():
-    # Leer el archivo CSV
-    input_file = "/home/jlinux/Desktop/Powerbi-main/Table1.csv"
+    # Cargar el archivo CSV
+    input_file = cargar_archivo()
     df = pd.read_csv(input_file, sep=",", encoding='utf-8')
 
     # Geocodificar el DataFrame
